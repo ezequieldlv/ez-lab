@@ -2,3 +2,5 @@
 tailscale/state/
 jellyfin/config/
 jellyfin/cache/
+pihole/etc-pihole
+pihole/etc-dnsmasq.d

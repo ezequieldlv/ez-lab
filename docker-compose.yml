@@ -9,7 +9,7 @@ services:
       - PGID=1000
       - TZ=America/Argentina/Cordoba
     volumes:
-      # Configuracion (Persiste aunque borremos el contenedor)
+      # Configuracion
       - ./jellyfin/config:/config
       - ./jellyfin/cache:/cache
       # Datos
@@ -18,7 +18,7 @@ services:
       - 8096:8096
     restart: unless-stopped
 
-    # SERVICIO 2: SAMBA (Tu servidor de archivos para Windows)
+    # SERVICIO 2: SAMBA 
   samba:
     image: dperson/samba
     container_name: samba
@@ -34,11 +34,10 @@ services:
       - "139:139"   # Puertos clásicos de Windows
       - "445:445"
     restart: unless-stopped
-    # Este comando mágico configura la carpeta compartida:
-    # "NombreCarpeta;RutaInterna;Visible;SoloLectura;Invitados;UsuarioAdmin..."
+    # Configuramos la carpeta compartida: "NombreCarpeta;RutaInterna;Visible;SoloLectura;Invitados;UsuarioAdmin..."
     command: '-s "Media;/mount/media;yes;no;no;ez;none;none;Media Share" -p'
 
-    # SERVICIO 3: TAILSCALE (Acceso Remoto Seguro)
+    # SERVICIO 3: TAILSCALE
   tailscale:
     image: tailscale/tailscale:latest
     container_name: tailscale
@@ -57,3 +56,22 @@ services:
       - NET_ADMIN   # Permiso para modificar la red del contenedor
       - SYS_MODULE
     restart: unless-stopped
+
+    # SERVICIO 4: Pi-hole 
+  pihole:
+    container_name: pihole
+    hostname: pihole
+    image: pihole/pihole:latest
+    environment:
+      - TZ=${TIMEZONE}
+      - WEBPASSWORD=${PIHOLE_PASS}
+    volumes:
+      - ./pihole/etc-pihole:/etc/pihole
+      - ./pihole/etc-dnsmasq.d:/etc/dnsmasq.d
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "8080:80/tcp" 
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN # Necesario para funciones avanzadas de red
