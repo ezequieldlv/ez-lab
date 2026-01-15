@@ -1,0 +1,59 @@
+services:
+
+    # SERVICIO 1: JELLYFIN
+  jellyfin:
+    image: lscr.io/linuxserver/jellyfin:latest
+    container_name: jellyfin
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Argentina/Cordoba
+    volumes:
+      # Configuracion (Persiste aunque borremos el contenedor)
+      - ./jellyfin/config:/config
+      - ./jellyfin/cache:/cache
+      # Datos
+      - /mnt/datos/media:/data/media
+    ports:
+      - 8096:8096
+    restart: unless-stopped
+
+    # SERVICIO 2: SAMBA (Tu servidor de archivos para Windows)
+  samba:
+    image: dperson/samba
+    container_name: samba
+    environment:
+      - TZ=${TIMEZONE}
+      - WORKGROUP=WORKGROUP
+      - USER=${SAMBA_USER};${SAMBA_PASS}   
+      - PERMISSIONS=true
+    volumes:
+      # Mapeamos LA MISMA carpeta que usa Jellyfin
+      - /mnt/datos/media:/mount/media
+    ports:
+      - "139:139"   # Puertos clásicos de Windows
+      - "445:445"
+    restart: unless-stopped
+    # Este comando mágico configura la carpeta compartida:
+    # "NombreCarpeta;RutaInterna;Visible;SoloLectura;Invitados;UsuarioAdmin..."
+    command: '-s "Media;/mount/media;yes;no;no;ez;none;none;Media Share" -p'
+
+    # SERVICIO 3: TAILSCALE (Acceso Remoto Seguro)
+  tailscale:
+    image: tailscale/tailscale:latest
+    container_name: tailscale
+    hostname: ez-lab
+    environment:
+      - TS_AUTHKEY=${TAILSCALE_KEY}
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_USERSPACE=false
+      - TS_EXTRA_ARGS=--advertise-exit-node
+    volumes:
+      # Guardamos el estado para que no pida login al reiniciar
+      - ./tailscale/state:/var/lib/tailscale
+      # Necesario para crear la interfaz de red VPN
+      - /dev/net/tun:/dev/net/tun
+    cap_add:
+      - NET_ADMIN   # Permiso para modificar la red del contenedor
+      - SYS_MODULE
+    restart: unless-stopped
