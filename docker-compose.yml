@@ -1,6 +1,6 @@
 services:
 
-    # SERVICIO 1: JELLYFIN
+  # SERVICIO 1: JELLYFIN
   jellyfin:
     image: lscr.io/linuxserver/jellyfin:latest
     container_name: jellyfin
@@ -14,11 +14,12 @@ services:
       - ./jellyfin/cache:/cache
       # Datos
       - /mnt/datos/media:/data/media
+      - /mnt/datos/torrents:/media/downloads
     ports:
       - 8096:8096
     restart: unless-stopped
 
-    # SERVICIO 2: SAMBA 
+  # SERVICIO 2: SAMBA 
   samba:
     image: dperson/samba
     container_name: samba
@@ -37,7 +38,7 @@ services:
     # Configuramos la carpeta compartida: "NombreCarpeta;RutaInterna;Visible;SoloLectura;Invitados;UsuarioAdmin..."
     command: '-s "Media;/mount/media;yes;no;no;ez;none;none;Media Share" -p'
 
-    # SERVICIO 3: TAILSCALE
+  # SERVICIO 3: TAILSCALE
   tailscale:
     image: tailscale/tailscale:latest
     container_name: tailscale
@@ -57,7 +58,7 @@ services:
       - SYS_MODULE
     restart: unless-stopped
 
-    # SERVICIO 4: Pi-hole 
+  # SERVICIO 4: Pi-hole 
   pihole:
     container_name: pihole
     hostname: pihole
@@ -65,6 +66,7 @@ services:
     environment:
       - TZ=${TIMEZONE}
       - WEBPASSWORD=${PIHOLE_PASS}
+      - DNSMASQ_LISTENING=all
     volumes:
       - ./pihole/etc-pihole:/etc/pihole
       - ./pihole/etc-dnsmasq.d:/etc/dnsmasq.d
@@ -75,3 +77,95 @@ services:
     restart: unless-stopped
     cap_add:
       - NET_ADMIN # Necesario para funciones avanzadas de red
+
+  # SERVICIO 5: Bittorrent 
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    environment:
+      - PUID=1000 # Usuario
+      - PGID=1000 # Grupo
+      - TZ=${TIMEZONE}
+      - WEBUI_PORT=8090
+    volumes:
+      - ./qbittorrent/config:/config
+      - /mnt/datos/torrents:/data
+    ports:
+      - 8090:8090     # Para entrar a la web
+      - 6881:6881     # Trafico TCP
+      - 6881:6881/udp # Trafico UDP
+    restart: unless-stopped
+
+  # --- AUTOMATIZACIÓN (ARR STACK) ---
+
+  # 1. Prowlarr: El buscador (Gestiona los indexadores de torrents)
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TIMEZONE}
+    volumes:
+      - ./prowlarr/config:/config
+    ports:
+      - 9696:9696
+    restart: unless-stopped
+
+  # 2. Radarr: Gestor de Películas
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TIMEZONE}
+    volumes:
+      - ./radarr/config:/config
+      - /mnt/datos:/data
+    ports:
+      - 7878:7878
+    restart: unless-stopped
+
+  # 3. Sonarr: Gestor de Series
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TIMEZONE}
+    volumes:
+      - ./sonarr/config:/config
+      - /mnt/datos:/data # Mismo volumen que Radarr y qBittorrent
+    ports:
+      - 8989:8989
+    restart: unless-stopped
+
+  # 4. Bazarr: Gestor de Subtítulos
+  bazarr:
+    image: lscr.io/linuxserver/bazarr:latest
+    container_name: bazarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TIMEZONE}
+    volumes:
+      - ./bazarr/config:/config
+      - /mnt/datos:/data # Solo necesita ver dónde quedaron los archivos finales
+    ports:
+      - 6767:6767
+    restart: unless-stopped
+
+  #DASHBOARD
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    container_name: homepage
+    ports:
+      - 3000:3000
+    volumes:
+      - ./homepage/config:/app/config # Mapeamos la config local
+      - /var/run/docker.sock:/var/run/docker.sock # Para que pueda ver el estado de otros contenedores
+    environment:
+      - HOMEPAGE_ALLOWED_HOSTS=*
+    restart: unless-stopped

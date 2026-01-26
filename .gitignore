@@ -4,3 +4,9 @@ jellyfin/config/
 jellyfin/cache/
 pihole/etc-pihole
 pihole/etc-dnsmasq.d
+homepage/config
+qbittorrent/config
+prowlarr/config
+radarr/config
+sonarr/config
+bazarr/config
