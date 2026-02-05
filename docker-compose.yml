@@ -1,5 +1,18 @@
 services:
 
+ #DASHBOARD
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    container_name: homepage
+    ports:
+      - 3000:3000
+    volumes:
+      - ./homepage/config:/app/config # Mapeamos la config local
+      - /var/run/docker.sock:/var/run/docker.sock # Para que pueda ver el estado de otros contenedores
+    environment:
+      - HOMEPAGE_ALLOWED_HOSTS=*
+    restart: unless-stopped
+
   # SERVICIO 1: JELLYFIN
   jellyfin:
     image: lscr.io/linuxserver/jellyfin:latest
@@ -7,7 +20,7 @@ services:
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=America/Argentina/Cordoba
+      - TZ=${TIMEZONE}
     volumes:
       # Configuracion
       - ./jellyfin/config:/config
@@ -15,6 +28,8 @@ services:
       # Datos
       - /mnt/datos/media:/data/media
       - /mnt/datos/torrents:/media/downloads
+    devices:
+      - /dev/dri:/dev/dri
     ports:
       - 8096:8096
     restart: unless-stopped
@@ -91,7 +106,7 @@ services:
       - ./qbittorrent/config:/config
       - /mnt/datos/torrents:/data
     ports:
-      - 8090:8090     # Para entrar a la web
+      - 8090:8090     # Ingreso
       - 6881:6881     # Trafico TCP
       - 6881:6881/udp # Trafico UDP
     restart: unless-stopped
@@ -152,20 +167,16 @@ services:
       - TZ=${TIMEZONE}
     volumes:
       - ./bazarr/config:/config
-      - /mnt/datos:/data # Solo necesita ver dónde quedaron los archivos finales
+      - /mnt/datos:/data 
     ports:
       - 6767:6767
     restart: unless-stopped
 
-  #DASHBOARD
-  homepage:
-    image: ghcr.io/gethomepage/homepage:latest
-    container_name: homepage
-    ports:
-      - 3000:3000
-    volumes:
-      - ./homepage/config:/app/config # Mapeamos la config local
-      - /var/run/docker.sock:/var/run/docker.sock # Para que pueda ver el estado de otros contenedores
-    environment:
-      - HOMEPAGE_ALLOWED_HOSTS=*
+ # Cloudflare Tunnel
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared-tunnel
     restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${TUNNEL_TOKEN}
+    networks:
+      - default
