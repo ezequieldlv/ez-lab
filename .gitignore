@@ -1,4 +1,22 @@
+# --- SECURITY ---
 .env
+.env.*
+
+# --- PYTHON ---
+#entorno virtual
+venv/
+env/
+.venv/
+
+#archivos compilados o cache
+__pycache__/
+*.pyc
+
+#logs de ejecución
+*.log
+docker/scripts/*.log
+
+# --- APP DATA & CONFIGS ---
 tailscale/state/
 jellyfin/config/
 jellyfin/cache/
@@ -10,3 +28,7 @@ prowlarr/config
 radarr/config
 sonarr/config
 bazarr/config
+
+# --- SYSTEM ---
+.DS_Store
+Thumbs.db
