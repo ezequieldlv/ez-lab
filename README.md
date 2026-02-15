@@ -6,21 +6,31 @@
 ![Hardware](https://img.shields.io/badge/Hardware-RPi_5-C51A4A?style=flat-square&logo=raspberrypi)
 
 ## 🚀 Project Overview
+
 **Ez-Lab** is a cloud-native home laboratory designed to simulate a production environment on a **Raspberry Pi 5**. The goal was to build a resilient, secure, and automated infrastructure for media streaming, observability, and self-hosting, strictly following **DevSecOps** and **SRE** principles.
 
 This project solves the challenge of accessing local services behind an ISP CGNAT without exposing public ports, utilizing a **Cloudflare Zero Trust** tunnel and automated Python scripting for telemetry.
 
 ## 🏗️ Architecture
-The system follows a microservices architecture orchestrated by Docker Compose.
+
+The system follows a microservices architecture orchestrated by Docker Compose with **Network Segmentation**.
 
 ```mermaid
 graph TD
     User((User / Internet)) -->|HTTPS / SSL| Cloudflare[Cloudflare Edge]
     Cloudflare -->|Encrypted Tunnel| Cloudflared[Cloudflared Daemon]
     
-    subgraph "Ez-Lab (Local Infrastructure)"
-        Cloudflared -->|Reverse Proxy| Portainer[Portainer Dashboard]
-        Cloudflared -->|Internal Net| ArrStack[Radarr / Sonarr / Prowlarr]
+    subgraph "Ez-Lab (RPi 5 Cluster)"
+        Cloudflared -->|web-net| Frontend[Portfolio (Hugo/Nginx)]
+        Cloudflared -->|web-net| Backend[API Telemetry (Go)]
+        Cloudflared -->|media-net| Portainer[Portainer Dashboard]
+        
+        Frontend -.->|Internal API Call| Backend
+        
+        subgraph "Media Segment (Isolated)"
+            ArrStack[Radarr / Sonarr / Prowlarr]
+            Jellyfin
+        end
         
         Auditor[Python Auditor Script] -->|Telemetry| OS[(Kernel / Sensors)]
         Auditor -->|Alerts| Telegram[Telegram Bot API]
@@ -30,12 +40,15 @@ graph TD
 ```
 
 ## 🛠️ Tech Stack
+
 * **Hardware:** Raspberry Pi 5 (8GB RAM) + NVMe/SSD Storage.
 * **OS:** Debian Bookworm (Headless / Hardened).
 * **Orchestration:** Docker Compose (Infrastructure as Code).
-* **Networking:** Cloudflare Tunnels (Zero Trust).
-* **Observability:** Custom Python Scripts (`psutil`), Telegram Alerts.
-* **Automation:** Bash Cron Jobs (Self-Healing), *Arr Suite (Media Ops).
+* **Networking:** Cloudflare Tunnels (Zero Trust) + Tailscale VPN.
+* **Services:**
+    * **Web:** Nginx, Hugo, Golang (REST API).
+    * **Media:** *Arr Suite, Jellyfin, Samba.
+    * **Observability:** Custom Python Scripts (psutil), Telegram Alerts.
 
 ## 💡 Key Challenges & Solutions (SRE Journal)
 
@@ -43,7 +56,11 @@ graph TD
 **Challenge:** My ISP uses CGNAT, making traditional Port Forwarding impossible.
 **Solution:** Implemented **Cloudflare Tunnels**. A lightweight daemon (`cloudflared`) creates an outbound-only encrypted connection to the Edge, allowing secure access via HTTPS without exposing public IPs.
 
-### 2. The "Black Box" Problem (Observability)
+### 2. Network Segmentation
+**Challenge:** Preventing a vulnerability in the Media stack from affecting the Public Portfolio.
+**Solution:** Implemented Docker Networks (`web-net` for public services, `media-net` for internal operations).
+
+### 3. The "Black Box" Problem (Observability)
 **Challenge:** Lack of visibility into disk pressure or thermal throttling.
 **Solution:** Developed a custom **Python Auditor** located in `/docker/scripts`.
 * **Kernel Telemetry:** Uses `psutil` to read `/sys/class/thermal` and disk usage.
@@ -51,35 +68,26 @@ graph TD
 
 ## 📦 How to Run
 
-1. Clone the repository.
-
-2. Create a `.env` file inside the `docker/` folder:
+1. **Prerequisite:** You must build the Portfolio images locally first (since they live in a separate repo).
    ```bash
-   # Network Secrets
-   TUNNEL_TOKEN=eyJhIjoi...
-   TAILSCALE_KEY=tskey-auth-...
-
-   # Alerting Secrets
-   TELEGRAM_BOT_TOKEN=your_token_here
-   TELEGRAM_CHAT_ID=your_id_here
+   # Clone the Application Repo
+   git clone [https://github.com/tu-usuario/portfolio-sre.git](https://github.com/tu-usuario/portfolio-sre.git)
+   cd portfolio-sre
+   
+   # Build the Images (Manual Step)
+   docker build -t ez-backend:v1 ./backend
+   docker build -t ez-portfolio:v4 ./frontend
    ```
 
-3. Deploy the stack:
+2. **Deploy Infrastructure:**
+   Clone this repo and deploy:
    ```bash
-   cd docker
+   cd ez-lab/docker
    docker compose up -d
    ```
 
-4. Setup Python Environment for scripts:
-   ```bash
-   cd docker/scripts
-   python3 -m venv venv
-   source venv/bin/activate
-   pip install -r requirements.txt
-   python3 auditor.py
-   ```
-
 ## 📂 Repository Structure
+
 * `/docker`: Main `docker-compose.yml` and `.env` file.
 * `/docker/scripts`:
     * `auditor.py`: Python telemetry script.

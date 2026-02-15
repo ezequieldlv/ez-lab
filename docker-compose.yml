@@ -1,19 +1,42 @@
 services:
 
- #DASHBOARD
+  # --- GRUPO 1: WEB & PORTFOLIO (Red Pública Protegida) ---
+
+  backend-portfolio:
+    image: ez-backend:v1
+    container_name: backend-portfolio
+    restart: unless-stopped
+    networks:
+      - web-net
+    environment:
+      - TZ=${TIMEZONE}
+
+  frontend-portfolio:
+    image: ez-portfolio:v4
+    container_name: frontend-portfolio
+    restart: unless-stopped
+    depends_on:
+      - backend-portfolio
+    networks:
+      - web-net
+    environment:
+      - TZ=${TIMEZONE}
+
+  # --- GRUPO 2: MEDIA & AUTOMATION (Red Privada) ---
+
   homepage:
     image: ghcr.io/gethomepage/homepage:latest
     container_name: homepage
-    ports:
-      - 3000:3000
     volumes:
-      - ./homepage/config:/app/config # Mapeamos la config local
-      - /var/run/docker.sock:/var/run/docker.sock # Para que pueda ver el estado de otros contenedores
+      - ./homepage/config:/app/config
+      - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - HOMEPAGE_ALLOWED_HOSTS=*
     restart: unless-stopped
+    networks:
+      - media-net  # Ve a los servicios multimedia
+      - web-net    # Ve al backend/frontend para mostrar stats
 
-  # SERVICIO 1: JELLYFIN
   jellyfin:
     image: lscr.io/linuxserver/jellyfin:latest
     container_name: jellyfin
@@ -22,38 +45,36 @@ services:
       - PGID=1000
       - TZ=${TIMEZONE}
     volumes:
-      # Configuracion
       - ./jellyfin/config:/config
-      - ./jellyfin/cache:/cache
-      # Datos
       - /mnt/datos/media:/data/media
-      - /mnt/datos/torrents:/media/downloads
     devices:
       - /dev/dri:/dev/dri
     ports:
       - 8096:8096
     restart: unless-stopped
+    networks:
+      - media-net
 
-  # SERVICIO 2: SAMBA 
   samba:
     image: dperson/samba
     container_name: samba
     environment:
       - TZ=${TIMEZONE}
       - WORKGROUP=WORKGROUP
-      - USER=${SAMBA_USER};${SAMBA_PASS}   
+      - USER=${SAMBA_USER};${SAMBA_PASS}
       - PERMISSIONS=true
     volumes:
-      # Mapeamos LA MISMA carpeta que usa Jellyfin
       - /mnt/datos/media:/mount/media
     ports:
-      - "139:139"   # Puertos clásicos de Windows
+      - "139:139"
       - "445:445"
     restart: unless-stopped
-    # Configuramos la carpeta compartida: "NombreCarpeta;RutaInterna;Visible;SoloLectura;Invitados;UsuarioAdmin..."
     command: '-s "Media;/mount/media;yes;no;no;ez;none;none;Media Share" -p'
+    networks:
+      - media-net
 
-  # SERVICIO 3: TAILSCALE
+  # --- SERVICIOS DE RED Y DNS ---
+
   tailscale:
     image: tailscale/tailscale:latest
     container_name: tailscale
@@ -64,56 +85,56 @@ services:
       - TS_USERSPACE=false
       - TS_EXTRA_ARGS=--advertise-exit-node
     volumes:
-      # Guardamos el estado para que no pida login al reiniciar
       - ./tailscale/state:/var/lib/tailscale
-      # Necesario para crear la interfaz de red VPN
       - /dev/net/tun:/dev/net/tun
     cap_add:
-      - NET_ADMIN   # Permiso para modificar la red del contenedor
+      - NET_ADMIN
       - SYS_MODULE
     restart: unless-stopped
+    network_mode: host # Tailscale prefiere 'host' para manejar mejor la VPN
 
-  # SERVICIO 4: Pi-hole 
   pihole:
     container_name: pihole
-    hostname: pihole
     image: pihole/pihole:latest
     environment:
       - TZ=${TIMEZONE}
       - WEBPASSWORD=${PIHOLE_PASS}
-      - DNSMASQ_LISTENING=all
     volumes:
       - ./pihole/etc-pihole:/etc/pihole
       - ./pihole/etc-dnsmasq.d:/etc/dnsmasq.d
     ports:
       - "53:53/tcp"
       - "53:53/udp"
-      - "8080:80/tcp" 
+      - "8080:80/tcp"
     restart: unless-stopped
     cap_add:
-      - NET_ADMIN # Necesario para funciones avanzadas de red
+      - NET_ADMIN
+    networks:
+      - media-net
+      - web-net # Para servir DNS a todos
 
-  # SERVICIO 5: Bittorrent 
+  # --- DOWNLOADERS (Arr Stack) ---
+  # Todos van a media-net para hablar entre ellos
+
   qbittorrent:
     image: lscr.io/linuxserver/qbittorrent:latest
     container_name: qbittorrent
     environment:
-      - PUID=1000 # Usuario
-      - PGID=1000 # Grupo
+      - PUID=1000
+      - PGID=1000
       - TZ=${TIMEZONE}
       - WEBUI_PORT=8090
     volumes:
       - ./qbittorrent/config:/config
       - /mnt/datos/torrents:/data
     ports:
-      - 8090:8090     # Ingreso
-      - 6881:6881     # Trafico TCP
-      - 6881:6881/udp # Trafico UDP
+      - 8090:8090
+      - 6881:6881
+      - 6881:6881/udp
     restart: unless-stopped
+    networks:
+      - media-net
 
-  # --- AUTOMATIZACIÓN (ARR STACK) ---
-
-  # 1. Prowlarr: El buscador (Gestiona los indexadores de torrents)
   prowlarr:
     image: lscr.io/linuxserver/prowlarr:latest
     container_name: prowlarr
@@ -126,8 +147,9 @@ services:
     ports:
       - 9696:9696
     restart: unless-stopped
+    networks:
+      - media-net
 
-  # 2. Radarr: Gestor de Películas
   radarr:
     image: lscr.io/linuxserver/radarr:latest
     container_name: radarr
@@ -141,8 +163,9 @@ services:
     ports:
       - 7878:7878
     restart: unless-stopped
+    networks:
+      - media-net
 
-  # 3. Sonarr: Gestor de Series
   sonarr:
     image: lscr.io/linuxserver/sonarr:latest
     container_name: sonarr
@@ -152,12 +175,13 @@ services:
       - TZ=${TIMEZONE}
     volumes:
       - ./sonarr/config:/config
-      - /mnt/datos:/data # Mismo volumen que Radarr y qBittorrent
+      - /mnt/datos:/data
     ports:
       - 8989:8989
     restart: unless-stopped
+    networks:
+      - media-net
 
-  # 4. Bazarr: Gestor de Subtítulos
   bazarr:
     image: lscr.io/linuxserver/bazarr:latest
     container_name: bazarr
@@ -167,16 +191,26 @@ services:
       - TZ=${TIMEZONE}
     volumes:
       - ./bazarr/config:/config
-      - /mnt/datos:/data 
+      - /mnt/datos:/data
     ports:
       - 6767:6767
     restart: unless-stopped
+    networks:
+      - media-net
 
- # Cloudflare Tunnel
+  # ☁️ CLOUDFLARE TUNNEL (El Nexo)
   tunnel:
     image: cloudflare/cloudflared:latest
     container_name: cloudflared-tunnel
     restart: unless-stopped
     command: tunnel --no-autoupdate run --token ${TUNNEL_TOKEN}
     networks:
-      - default
+      - web-net    # Para ver al Portfolio/Backend
+      - media-net  # Para ver a Jellyfin/Arr 
+
+# DEFINICIÓN DE REDES
+networks:
+  web-net:
+    driver: bridge
+  media-net:
+    driver: bridge
