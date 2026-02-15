@@ -21,8 +21,8 @@ graph TD
     Cloudflare -->|Encrypted Tunnel| Cloudflared[Cloudflared Daemon]
     
     subgraph "Ez-Lab (RPi 5 Cluster)"
-        Cloudflared -->|web-net| Frontend[Portfolio (Hugo/Nginx)]
-        Cloudflared -->|web-net| Backend[API Telemetry (Go)]
+        Cloudflared -->|web-net| Frontend["Portfolio (Hugo/Nginx)"]
+        Cloudflared -->|web-net| Backend["API Telemetry (Go)"]
         Cloudflared -->|media-net| Portainer[Portainer Dashboard]
         
         Frontend -.->|Internal API Call| Backend
@@ -32,7 +32,7 @@ graph TD
             Jellyfin
         end
         
-        Auditor[Python Auditor Script] -->|Telemetry| OS[(Kernel / Sensors)]
+        Auditor[Python Auditor Script] -->|Telemetry| OS[("Kernel / Sensors")]
         Auditor -->|Alerts| Telegram[Telegram Bot API]
     end
     
