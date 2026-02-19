@@ -34,8 +34,8 @@ services:
       - HOMEPAGE_ALLOWED_HOSTS=*
     restart: unless-stopped
     networks:
-      - media-net  # Ve a los servicios multimedia
-      - web-net    # Ve al backend/frontend para mostrar stats
+      - media-net
+      - web-net    
 
   jellyfin:
     image: lscr.io/linuxserver/jellyfin:latest

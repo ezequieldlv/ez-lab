@@ -71,7 +71,7 @@ graph TD
 1. **Prerequisite:** You must build the Portfolio images locally first (since they live in a separate repo).
    ```bash
    # Clone the Application Repo
-   git clone [https://github.com/tu-usuario/portfolio-sre.git](https://github.com/tu-usuario/portfolio-sre.git)
+   git clone [https://github.com/ezequieldlv/portfolio-sre](https://github.com/ezequieldlv/portfolio-sre)
    cd portfolio-sre
    
    # Build the Images (Manual Step)
