@@ -12,7 +12,7 @@ services:
       - TZ=${TIMEZONE}
 
   frontend-portfolio:
-    image: ez-portfolio:v4
+    image: ez-frontend:v4
     container_name: frontend-portfolio
     restart: unless-stopped
     depends_on:

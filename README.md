@@ -17,26 +17,35 @@ The system follows a microservices architecture orchestrated by Docker Compose w
 
 ```mermaid
 graph TD
-    User((User / Internet)) -->|HTTPS / SSL| Cloudflare[Cloudflare Edge]
-    Cloudflare -->|Encrypted Tunnel| Cloudflared[Cloudflared Daemon]
+    %% Custom Colors (SRE Dark Theme)
+    classDef internet fill:#16161e,stroke:#7aa2f7,stroke-width:2px,color:#c0caf5
+    classDef cf fill:#f6821f,stroke:#fff,stroke-width:2px,color:#fff,font-weight:bold
+    classDef daemon fill:#1a1b26,stroke:#7aa2f7,stroke-width:2px,color:#c0caf5
+    classDef app fill:#292e42,stroke:#9ece6a,stroke-width:2px,color:#c0caf5
+    classDef media fill:#292e42,stroke:#bb9af7,stroke-width:2px,color:#c0caf5
+    classDef hw fill:#16161e,stroke:#f7768e,stroke-width:2px,color:#c0caf5
+    classDef alert fill:#16161e,stroke:#e0af68,stroke-width:2px,color:#c0caf5
+
+    User((🌐 Internet)):::internet -->|HTTPS / SSL| Cloudflare{☁️ Cloudflare Edge}:::cf
+    Cloudflare -->|Encrypted Tunnel| Cloudflared[🛡️ Cloudflared Daemon]:::daemon
     
     subgraph "Ez-Lab (RPi 5 Cluster)"
-        Cloudflared -->|web-net| Frontend["Portfolio (Hugo/Nginx)"]
-        Cloudflared -->|web-net| Backend["API Telemetry (Go)"]
-        Cloudflared -->|media-net| Portainer[Portainer Dashboard]
+        Cloudflared -->|web-net| Frontend["🖥️ Portfolio (Hugo/Nginx)"]:::app
+        Cloudflared -->|web-net| Backend["⚙️ API Telemetry (Go)"]:::app
+        Cloudflared -->|media-net| Portainer["🐳 Portainer"]:::app
         
         Frontend -.->|Internal API Call| Backend
         
         subgraph "Media Segment (Isolated)"
-            ArrStack[Radarr / Sonarr / Prowlarr]
-            Jellyfin
+            ArrStack["🎬 *Arr Suite"]:::media
+            Jellyfin["🍿 Jellyfin"]:::media
         end
         
-        Auditor[Python Auditor Script] -->|Telemetry| OS[("Kernel / Sensors")]
-        Auditor -->|Alerts| Telegram[Telegram Bot API]
+        Auditor["🐍 Python Auditor"]:::hw -->|Telemetry| OS[("🌡️ Kernel / Sensors")]:::hw
+        Auditor -->|Alerts| Telegram["📱 Telegram API"]:::alert
     end
     
-    ArrStack -->|IO| HDD[(External Storage)]
+    ArrStack -->|IO| HDD[("💾 External Storage")]:::hw
 ```
 
 ## 🛠️ Tech Stack
