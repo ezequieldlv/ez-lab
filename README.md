@@ -50,14 +50,14 @@ graph TD
 
 ## 🛠️ Tech Stack
 
-* **Hardware:** Raspberry Pi 5 (8GB RAM) + NVMe/SSD Storage.
+* **Hardware:** Raspberry Pi 5 (4GB RAM) + NVMe/SSD Storage.
 * **OS:** Debian Bookworm (Headless / Hardened).
 * **Orchestration:** Docker Compose (Infrastructure as Code).
 * **Networking:** Cloudflare Tunnels (Zero Trust) + Tailscale VPN.
 * **Services:**
-    * **Web:** Nginx, Hugo, Golang (REST API).
+    * **Web/API:** Nginx, Hugo, Golang (REST API).
     * **Media:** *Arr Suite, Jellyfin, Samba.
-    * **Observability:** Custom Python Scripts (psutil), Telegram Alerts.
+    * **Observability (The SRE Stack):** Prometheus, Grafana, Loki, Promtail, Uptime Kuma.
 
 ## 💡 Key Challenges & Solutions (SRE Journal)
 
@@ -69,11 +69,13 @@ graph TD
 **Challenge:** Preventing a vulnerability in the Media stack from affecting the Public Portfolio.
 **Solution:** Implemented Docker Networks (`web-net` for public services, `media-net` for internal operations).
 
-### 3. The "Black Box" Problem (Observability)
-**Challenge:** Lack of visibility into disk pressure or thermal throttling.
-**Solution:** Developed a custom **Python Auditor** located in `/docker/scripts`.
-* **Kernel Telemetry:** Uses `psutil` to read `/sys/class/thermal` and disk usage.
-* **Alerting:** Integrated with **Telegram API**. Sends push notifications if CPU > 75°C or Disk > 85%.
+### 3. The "Black Box" Problem (Enterprise Observability)
+**Challenge:** Lack of visibility into real-time metrics, logs, and external uptime.
+**Solution:** Retired basic Python telemetry scripts and deployed an industry-standard observability stack.
+* **Metrics:** Prometheus scrapes hardware data via Node Exporter.
+* **Logs:** Loki & Promtail aggregate container logs centrally, eliminating SSH manual debugging.
+* **Visualization & Alerting:** Grafana visualizes the cluster and triggers Webhooks (Telegram) on critical thresholds (CPU > 75°C, Disk > 85%).
+* **Blackbox Monitoring:** Uptime Kuma constantly pings the public endpoints to verify 99.9% availability and SSL certificate health.
 
 ## 📦 How to Run
 

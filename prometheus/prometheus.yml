@@ -1,0 +1,8 @@
+global:
+  scrape_interval: 15s # Con qué frecuencia recolecta datos
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'node_exporter_rpi5'
+    static_configs:
+      - targets: ['node-exporter:9100']
