@@ -128,7 +128,7 @@ services:
       - ./qbittorrent/config:/config
       - /mnt/datos/torrents:/data
     ports:
-      - 8090:8090
+      - 100.98.122.15:8090:8090
       - 6881:6881
       - 6881:6881/udp
     restart: unless-stopped
@@ -145,7 +145,7 @@ services:
     volumes:
       - ./prowlarr/config:/config
     ports:
-      - 9696:9696
+      - 100.98.122.15:9696:9696
     restart: unless-stopped
     networks:
       - media-net
@@ -161,7 +161,7 @@ services:
       - ./radarr/config:/config
       - /mnt/datos:/data
     ports:
-      - 7878:7878
+      - 100.98.122.15:7878:7878
     restart: unless-stopped
     networks:
       - media-net
@@ -177,7 +177,7 @@ services:
       - ./sonarr/config:/config
       - /mnt/datos:/data
     ports:
-      - 8989:8989
+      - 100.98.122.15:8989:8989
     restart: unless-stopped
     networks:
       - media-net
@@ -193,7 +193,7 @@ services:
       - ./bazarr/config:/config
       - /mnt/datos:/data
     ports:
-      - 6767:6767
+      - 100.98.122.15:6767:6767
     restart: unless-stopped
     networks:
       - media-net
@@ -244,7 +244,7 @@ services:
     container_name: grafana
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - 100.98.122.15:3000:3000
     volumes:
       - grafana_data:/var/lib/grafana
     networks:
@@ -260,7 +260,7 @@ services:
     volumes:
       - uptime_kuma_data:/app/data
     ports:
-      - "3001:3001"
+      - 100.98.122.15:3001:3001
     networks:
       - web-net
 
@@ -272,7 +272,7 @@ services:
     container_name: loki
     restart: unless-stopped
     ports:
-      - "3100:3100"
+      - 100.98.122.15:3100:3100
     volumes:
       - ./loki/loki-config.yml:/etc/loki/local-config.yaml:ro
       - loki_data:/loki
