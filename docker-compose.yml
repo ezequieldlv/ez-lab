@@ -3,7 +3,7 @@ services:
   # --- GRUPO 1: WEB & PORTFOLIO (Red Pública Protegida) ---
 
   backend-portfolio:
-    image: ez-backend:v1
+    image: ghcr.io/ezequieldlv/ez-backend:latest
     container_name: backend-portfolio
     restart: unless-stopped
     networks:
@@ -12,7 +12,7 @@ services:
       - TZ=${TIMEZONE}
 
   frontend-portfolio:
-    image: ez-frontend:v4
+    image: ghcr.io/ezequieldlv/ez-frontend:latest
     container_name: frontend-portfolio
     restart: unless-stopped
     depends_on:
@@ -264,7 +264,7 @@ services:
     networks:
       - web-net
 
-      # =========================================
+  # =========================================
   # FASE 5.3: CENTRALIZACIÓN DE LOGS (LOKI + PROMTAIL)
   # =========================================
   loki:
@@ -290,6 +290,21 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./loki/promtail-config.yml:/etc/promtail/config.yml:ro
     command: -config.file=/etc/promtail/config.yml
+    networks:
+      - web-net
+
+  # Watchtower CI/CD
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /home/ez/.docker/config.json:/config.json
+    environment:
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_POLL_INTERVAL=300
+      - DOCKER_API_VERSION=1.44
+    restart: unless-stopped
     networks:
       - web-net
 
