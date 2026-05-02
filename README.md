@@ -7,13 +7,13 @@
 
 ## 🚀 Project Overview
 
-**Ez-Lab** is a cloud-native home laboratory designed to simulate a production environment on a **Raspberry Pi 5**. The goal was to build a resilient, secure, and automated infrastructure for media streaming, observability, and self-hosting, strictly following **DevSecOps** and **SRE** principles.
+**Ez-Lab** is a cloud-native home laboratory designed to simulate a production environment on a **Raspberry Pi 5 (Edge Node)**. The goal was to build a resilient, secure, and automated infrastructure for media streaming, observability, and self-hosting, strictly following **DevSecOps** and **SRE** principles.
 
-This project solves the challenge of accessing local services behind an ISP CGNAT without exposing public ports, utilizing a **Cloudflare Zero Trust** tunnel and automated Python scripting for telemetry.
+This project solves the challenge of accessing local services behind an ISP CGNAT without exposing public ports, utilizing a **Cloudflare Zero Trust** tunnel, deep observability, and declarative GitOps automation.
 
-## 🏗️ Architecture
+## 🏗️ Architecture Topology
 
-The system follows a microservices architecture orchestrated by Docker Compose with **Network Segmentation**.
+The system follows a microservices architecture orchestrated by Docker Compose with strict **Network Segmentation** and automated resilience testing.
 
 ```mermaid
 graph TD
@@ -24,12 +24,13 @@ graph TD
     classDef app fill:#292e42,stroke:#9ece6a,stroke-width:2px,color:#c0caf5
     classDef media fill:#292e42,stroke:#bb9af7,stroke-width:2px,color:#c0caf5
     classDef hw fill:#16161e,stroke:#f7768e,stroke-width:2px,color:#c0caf5
-    classDef alert fill:#16161e,stroke:#e0af68,stroke-width:2px,color:#c0caf5
+    classDef obs fill:#24283b,stroke:#e0af68,stroke-width:2px,color:#c0caf5
+    classDef chaos fill:#f7768e,stroke:#fff,stroke-width:2px,color:#16161e,font-weight:bold
 
-    User((🌐 Internet)):::internet -->|HTTPS / SSL| Cloudflare{☁️ Cloudflare Edge}:::cf
+    User((🌐 Internet)):::internet -->|HTTPS / SSL| Cloudflare{☁️ Cloudflare Edge / WAF}:::cf
     Cloudflare -->|Encrypted Tunnel| Cloudflared[🛡️ Cloudflared Daemon]:::daemon
     
-    subgraph "Ez-Lab (RPi 5 Cluster)"
+    subgraph "Ez-Lab (RPi 5 Edge Cluster)"
         Cloudflared -->|web-net| Frontend["🖥️ Portfolio (Hugo/Nginx)"]:::app
         Cloudflared -->|web-net| Backend["⚙️ API Telemetry (Go)"]:::app
         Cloudflared -->|media-net| Portainer["🐳 Portainer"]:::app
@@ -41,8 +42,14 @@ graph TD
             Jellyfin["🍿 Jellyfin"]:::media
         end
         
-        Auditor["🐍 Python Auditor"]:::hw -->|Telemetry| OS[("🌡️ Kernel / Sensors")]:::hw
-        Auditor -->|Alerts| Telegram["📱 Telegram API"]:::alert
+        subgraph "Observability & Automation"
+            Prometheus["📊 Prometheus"]:::obs -->|Scrapes| NodeExporter["⚙️ Node Exporter"]:::obs
+            Grafana["📈 Grafana"]:::obs -->|Queries| Prometheus
+            Grafana -->|Queries| Loki["🪵 Loki (Log Aggregation)"]:::obs
+            Watchtower["🔄 Watchtower (GitOps)"]:::daemon -.->|Auto-Updates| Frontend
+        end
+
+        Chaos["🐒 Python Chaos Monkey"]:::chaos -.->|Sends SIGKILL| Frontend
     end
     
     ArrStack -->|IO| HDD[("💾 External Storage")]:::hw
@@ -50,14 +57,12 @@ graph TD
 
 ## 🛠️ Tech Stack
 
-* **Hardware:** Raspberry Pi 5 (4GB RAM) + NVMe/SSD Storage.
+* **Hardware:** Raspberry Pi 5 (8GB RAM) + NVMe Boot.
 * **OS:** Debian Bookworm (Headless / Hardened).
-* **Orchestration:** Docker Compose (Infrastructure as Code).
-* **Networking:** Cloudflare Tunnels (Zero Trust) + Tailscale VPN.
-* **Services:**
-    * **Web/API:** Nginx, Hugo, Golang (REST API).
-    * **Media:** *Arr Suite, Jellyfin, Samba.
-    * **Observability (The SRE Stack):** Prometheus, Grafana, Loki, Promtail, Uptime Kuma.
+* **Orchestration:** Docker Compose.
+* **Networking:** Cloudflare Tunnels (Zero Trust) + Tailscale Mesh VPN.
+* **Observability (Enterprise Stack):** Prometheus, Grafana, Loki, Promtail, Uptime Kuma.
+* **Automation:** Watchtower (GitOps), Python (Chaos Engineering).
 
 ## 💡 Key Challenges & Solutions (SRE Journal)
 
@@ -67,42 +72,37 @@ graph TD
 
 ### 2. Network Segmentation
 **Challenge:** Preventing a vulnerability in the Media stack from affecting the Public Portfolio.
-**Solution:** Implemented Docker Networks (`web-net` for public services, `media-net` for internal operations).
+**Solution:** Implemented isolated Docker Networks (`web-net` for public-facing apps, `media-net` for internal operations).
 
-### 3. The "Black Box" Problem (Enterprise Observability)
+### 3. The "Black Box" Problem (Deep Observability)
 **Challenge:** Lack of visibility into real-time metrics, logs, and external uptime.
-**Solution:** Retired basic Python telemetry scripts and deployed an industry-standard observability stack.
-* **Metrics:** Prometheus scrapes hardware data via Node Exporter.
-* **Logs:** Loki & Promtail aggregate container logs centrally, eliminating SSH manual debugging.
-* **Visualization & Alerting:** Grafana visualizes the cluster and triggers Webhooks (Telegram) on critical thresholds (CPU > 75°C, Disk > 85%).
-* **Blackbox Monitoring:** Uptime Kuma constantly pings the public endpoints to verify 99.9% availability and SSL certificate health.
+**Solution:** Deployed an industry-standard observability stack. Prometheus scrapes hardware data, Loki aggregates container logs (eliminating SSH debugging), and Grafana triggers Telegram webhooks on critical thresholds.
+
+### 4. Chaos Engineering (Resilience Testing)
+**Challenge:** Assuming containers will automatically recover is not a metric.
+**Solution:** Developed a custom **Python Chaos Monkey** script that randomly sends `SIGKILL` (Exit Code 137) to production containers to validate Docker's declarative restart policies and monitor self-healing recovery times.
 
 ## 📦 How to Run
 
-1. **Prerequisite:** You must build the Portfolio images locally first (since they live in a separate repo).
+1. **Deploy Infrastructure:**
+   Clone this repo and deploy the core services:
    ```bash
-   # Clone the Application Repo
-   git clone [https://github.com/ezequieldlv/portfolio-sre](https://github.com/ezequieldlv/portfolio-sre)
-   cd portfolio-sre
-   
-   # Build the Images (Manual Step)
-   docker build -t ez-backend:v1 ./backend
-   docker build -t ez-portfolio:v4 ./frontend
+   git clone [https://github.com/ezequieldlv/ez-lab.git](https://github.com/ezequieldlv/ez-lab.git)
+   cd ez-lab
+   docker compose up -d
    ```
 
-2. **Deploy Infrastructure:**
-   Clone this repo and deploy:
+2. **Run Chaos Experiments (Optional):**
    ```bash
-   cd ez-lab/docker
-   docker compose up -d
+   python3 scripts/chaos_monkey.py
    ```
 
 ## 📂 Repository Structure
 
-* `/docker`: Main `docker-compose.yml` and `.env` file.
-* `/docker/scripts`:
-    * `auditor.py`: Python telemetry script.
-    * `requirements.txt`: Python dependencies.
+* `docker-compose.yml`: The declarative source of truth for the cluster.
+* `/prometheus/`: Prometheus scrape configurations.
+* `/loki/`: Log aggregation and Promtail parsing rules.
+* `/scripts/`: SRE automation scripts (Chaos Monkey, Alerts).
 
 ---
-*Built with ❤️ and ☕ by Ez. Hosted on a Raspberry Pi 5.*
+*Architected by Ezequiel | Running on bare-metal. Expanding to AWS.*
