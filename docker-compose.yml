@@ -1,5 +1,18 @@
 services:
 
+  # --- ADMIN
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    ports:
+      - "100.98.122.15:9000:9000"
+    networks:
+      - web-net
+
   # --- GRUPO 1: WEB & PORTFOLIO (Red Pública Protegida) ---
 
   backend-portfolio:
@@ -91,7 +104,7 @@ services:
       - NET_ADMIN
       - SYS_MODULE
     restart: unless-stopped
-    network_mode: host # Tailscale prefiere 'host' para manejar mejor la VPN
+    network_mode: host
 
   pihole:
     container_name: pihole
@@ -312,10 +325,26 @@ services:
 # DECLARACIÓN DE VOLÚMENES PERSISTENTES
 # =========================================
 volumes:
+  portainer_data:
   prometheus_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /mnt/datos/docker_volumes/prometheus_data
   grafana_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /mnt/datos/docker_volumes/grafana_data
   uptime_kuma_data:
   loki_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /mnt/datos/docker_volumes/loki_data
 
 # DEFINICIÓN DE REDES
 networks:
